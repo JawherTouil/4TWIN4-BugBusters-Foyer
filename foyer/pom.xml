@@ -92,5 +92,11 @@
 			</plugin>
 		</plugins>
 	</build>
-
+   <distributionManagement>
+	   <repository>
+		   <id>nexus</id>
+		   <name>BugBusters Realeases</name>
+		   <url>http://localhost:8081/repository/bugbusters-releases</url>
+	   </repository>
+   </distributionManagement>
 </project>
