@@ -34,7 +34,6 @@ services:
 
   sonarqube:
     image: sonarqube:latest
-    container_name: sonarqube
     environment:
       SONARQUBE_JDBC_URL: jdbc:mysql://mysql:3306/sonar  # Ensure the 'sonar' database is available
       SONARQUBE_JDBC_USERNAME: sonar
@@ -51,7 +50,6 @@ services:
 
   nexus:
     image: sonatype/nexus3
-    container_name: nexus
     ports:
       - "8081:8081"
     networks:
