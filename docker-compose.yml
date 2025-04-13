@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: foyer  # This will be created automatically when MySQL starts
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ''
+    ports:
+      - "3306:3306"
+    networks:
+      - my_network
+    volumes:
+      - mysql-data:/var/lib/mysql  # Persist MySQL data
+    restart: always
+
+  springboot:
+    image: jawhertouil/jawhertouil-bugbusters-4twin4-foyer
+    container_name: springboot
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/foyer?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ''
+    ports:
+      - "8089:8089"
+    depends_on:
+      - mysql
+    networks:
+      - my_network
+    restart: always
+
+  sonarqube:
+    image: sonarqube:latest
+    container_name: sonarqube
+    environment:
+      SONARQUBE_JDBC_URL: jdbc:mysql://mysql:3306/sonar  # Ensure the 'sonar' database is available
+      SONARQUBE_JDBC_USERNAME: sonar
+      SONARQUBE_JDBC_PASSWORD: sonar
+    ports:
+      - "9000:9000"
+    networks:
+      - my_network
+    volumes:
+      - sonar-data:/opt/sonarqube/data
+      - sonar-logs:/opt/sonarqube/logs
+      - sonar-extensions:/opt/sonarqube/extensions
+    restart: always
+
+  nexus:
+    image: sonatype/nexus3
+    container_name: nexus
+    ports:
+      - "8081:8081"
+    networks:
+      - my_network
+    volumes:
+      - nexus-data:/nexus-data  # Persist Nexus data
+    restart: always
+
+networks:
+  my_network:
+    driver: bridge
+
+volumes:
+  mysql-data:  # Volume for MySQL
+  sonar-data:  # Volume for SonarQube data
+  sonar-logs:  # Volume for SonarQube logs
+  sonar-extensions:  # Volume for SonarQube extensions
+  nexus-data:  # Volume for Nexus data
