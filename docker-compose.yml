@@ -5,16 +5,14 @@ services:
     image: mysql:8.0
     container_name: mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: foyer  # This will be created automatically when MySQL starts
-      MYSQL_USER: root
-      MYSQL_PASSWORD: ''
+      MYSQL_ROOT_PASSWORD: root        # Setting the root password
+      MYSQL_DATABASE: foyer            # This database will be created automatically
     ports:
       - "3306:3306"
     networks:
       - my_network
     volumes:
-      - mysql-data:/var/lib/mysql  # Persist MySQL data
+      - mysql-data:/var/lib/mysql      # Persist MySQL data
     restart: always
 
   springboot:
