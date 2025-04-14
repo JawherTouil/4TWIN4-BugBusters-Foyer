@@ -56,15 +56,6 @@ services:
       - nexus-data:/nexus-data  # Persist Nexus data
     restart: always
 
-  harness:
-    image: harness/harness-platform   # Replace with your custom Harness image
-    container_name: harness
-    ports:
-      - "3000:3000"  # Expose the Harness platform on port 3000
-    networks:
-      - my_network
-    restart: always
-
 networks:
   my_network:
     driver: bridge
