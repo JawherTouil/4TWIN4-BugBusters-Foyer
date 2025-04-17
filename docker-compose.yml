@@ -57,16 +57,15 @@ services:
     restart: always
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus
+    restart: always
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - prometheus-data:/prometheus
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml  # Add your custom Prometheus config file here
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - my_network
-    restart: always
 
   grafana:
     image: grafana/grafana:latest
