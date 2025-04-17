@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root        # Setting the root password
+      MYSQL_ROOT_PASSWORD: ''        # Setting the root password
       MYSQL_DATABASE: foyer            # This database will be created automatically
     ports:
       - "3306:3306"
