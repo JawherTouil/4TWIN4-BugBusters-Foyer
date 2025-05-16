@@ -15,8 +15,13 @@ This DevOps project demonstrates a complete CI/CD pipeline setup for a Java Spri
 - **Grafana**: Visualization of metrics
 - **Harness**: Continuous Delivery and GitOps platform
 - **GitHub**: Source code repository
+![pipline](https://github.com/user-attachments/assets/44bd8e1b-b260-4b35-9d44-f78116cc065d)
 
----
+![docker](https://github.com/user-attachments/assets/0b2c0573-8b6a-40d4-afa6-021d21075363)
+![promethuesgrafna](https://github.com/user-attachments/assets/2fcdca2c-4e05-45e3-bc32-a9d6ee525a32)
+![nexus](https://github.com/user-attachments/assets/b95a3256-3a64-4e2d-9508-131d3b1d75e8)
+![harness](https://github.com/user-attachments/assets/d164083a-bd3a-4184-a991-586982513bf9)
+
 
 ## 📦 Project Architecture
 
