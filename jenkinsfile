@@ -1,0 +1,207 @@
+pipeline {
+    agent any
+
+    environment {
+        GIT_CREDENTIALS_ID = 'mon-credential-github'
+        REPO_URL = 'https://github.com/BugBustersDevops/4TWIN4-BugBusters-Foyer.git'
+        BRANCH = '' // change to suit you
+        DOCKER_USERNAME = credentials('docker-username')  // DockerHub username
+        DOCKER_PASSWORD = credentials('docker-token')    // DockerHub token (separate from username)
+        DOCKER_IMAGE_NAME = ''  // Docker image name
+        SONAR_TOKEN = credentials('sonar-token') 
+        
+        HARNESS_REPO_URL = 'http://localhost:3000/git/ProjetDevops/ProjetDevops.git'
+        HARNESS_CREDENTIALS_ID = 'harness-git-creds'
+    }
+
+    stages {
+               
+
+        
+        stage('Clone') {
+            steps {
+                git branch: BRANCH, credentialsId: GIT_CREDENTIALS_ID, url: REPO_URL
+            }
+        }
+
+        stage('Clean') {
+            steps {
+                dir('foyer') {
+                    sh 'mvn clean'
+                }
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                dir('foyer') {
+                    sh 'mvn compile'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('foyer') {
+                    sh 'mvn test'
+                }
+            }
+        }
+
+        stage('Install') {
+            steps {
+                dir('foyer') {
+                    sh 'mvn install'
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                dir('foyer') {
+                    sh 'mvn package'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('MySonarQubeServer') {
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        dir('foyer') {
+                            sh """
+                                mvn clean verify sonar:sonar \\
+                                -Dsonar.projectKey=foyer-key \\
+                                -Dsonar.host.url=http://localhost:9000 \\
+                                -Dsonar.token=$SONAR_TOKEN
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build Docker image using the Dockerfile in the project
+                    sh 'docker build -t $DOCKER_IMAGE_NAME -f foyer/Dockerfile foyer/'
+                }
+            }
+        }
+        stage('Trivy Scan') {
+            steps {
+                script {
+                    sh '''
+                        docker run --rm \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v $HOME/.cache/trivy:/root/.cache/ \
+                          aquasec/trivy:latest image \
+                          --exit-code 0 \
+                          --severity HIGH,CRITICAL \
+                          $DOCKER_IMAGE_NAME
+                    '''
+                }
+            }
+        }
+
+        stage('Login to DockerHub') {
+            steps {
+                withCredentials([
+                    usernamePassword(credentialsId: 'docker-username', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD'),
+                    string(credentialsId: 'docker-token', variable: 'TOKEN')
+                ]) {
+                    sh "echo \$TOKEN | docker login -u \$USERNAME --password-stdin"
+                }
+            }
+        }
+
+        stage('Push Docker Image to DockerHub') {
+            steps {
+                script {
+                    // Push the image to DockerHub
+                    sh "docker push $DOCKER_IMAGE_NAME"
+                }
+            }
+        }
+
+        stage('Deploy to Nexus') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'nexus-credentials', usernameVariable: 'NEXUS_USERNAME', passwordVariable: 'NEXUS_PASSWORD')]) {
+                        dir('foyer') {
+                            // Using environment variables to pass username and password securely
+                            sh """
+                                mvn deploy -DaltDeploymentRepository=nexus::default::http://localhost:8081/repository/bugbusters-releases/ \\
+                                -Dusername=\$NEXUS_USERNAME \\
+                                -Dpassword=\$NEXUS_PASSWORD
+                            """
+                        }
+                    }
+                }
+            }
+        }
+ stage('Start Harness Git Container') {
+  steps {
+    script {
+      sh '''
+        docker start harness || docker run -d \
+          -p 3000:3000 \
+          -p 22:22 \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v harness-data:/data \
+          --name harness \
+          --restart always \
+          harness/harness
+      '''
+    }
+  }
+}
+
+        stage('Push to Harness Git') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: HARNESS_CREDENTIALS_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    script {
+                        sh '''
+                            git config user.email ""
+                            git config user.name ""
+                            
+                            git remote remove origin-harness || true
+                            git remote add origin-harness http://$USERNAME:$PASSWORD@localhost:3000/git/ProjetDevops/ProjetDevops.git
+
+                            # Stash any local changes to ensure the working directory is clean
+                            git stash || echo "No changes to stash"
+
+                            # Pull the latest changes from the remote repository
+                            git pull origin-harness main --rebase || echo "No changes to pull"
+
+                            # Apply any stashed changes (if there were any)
+                            git stash pop || echo "No stashed changes to apply"
+
+                            COMMIT_MSG=$(git log -1 --pretty=%B)
+                            git add .
+                            git commit -m "$COMMIT_MSG" || echo "No changes to commit"
+                            # Push to the remote repository, force if necessary to overwrite the remote state
+                            git push origin-harness HEAD:main --force || echo "Push failed"
+                        '''
+                    }
+                }
+            }
+        }
+         stage('Clean Workspace') {
+            steps {
+                cleanWs()  // Clean up the workspace to avoid any issues
+            }
+        }
+    }
+    
+    post {
+        failure {
+            emailext (
+                subject: "Pipeline Failure: $JOB_NAME - Build #$BUILD_NUMBER",
+                body: "The pipeline for $JOB_NAME - Build #$BUILD_NUMBER has failed.\n\nPlease check the Jenkins console output for details: $BUILD_URL",
+                to: ''
+            )
+        }
+    }
+}
